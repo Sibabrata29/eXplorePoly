@@ -20,94 +20,51 @@ from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen
 import py3Dmol
 
 
-# # --- DATA LOADING ---
-# # Define data file paths
-
-# DATA_DIR = 'E:/15 Polyexplore/predictions_polyprop/'
-# FEATURES_FILE = DATA_DIR + 'polyeXplore model feature & index.xlsx'
-# LIBRARY_FILE = DATA_DIR + 'polyeXplore polymer library data.xlsx'
-# SMILES_FILE = DATA_DIR + 'polyeXplore_smiles.xlsx'
-
-# # --- CONFIG ---
-
-# @st.cache_data(show_spinner=False)
-# def load_data(features_file, library_file):
-#     features = pd.read_excel(features_file, sheet_name='polyFeature', index_col=0)
-#     properties = pd.read_excel(features_file, sheet_name='polyIndex', index_col=0)
-#     library = pd.read_excel(library_file, sheet_name='reference', index_col=0)
-#     return features, properties, library
-
-
-# @st.cache_data(show_spinner=False)
-# def load_smiles(smiles_file):
-#     df = pd.read_excel(smiles_file, sheet_name='SMILES')
-#     if 'Polymer' not in df.columns:
-#         raise KeyError("'Polymer' column not found in SMILES sheet")
-#     df.set_index('Polymer', inplace=True)
-#     return df
-
-
-# # Call functions with explicit parameters
-# features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
-# smiles_df = load_smiles(SMILES_FILE)
-
 ## DATA LOADING REVISITED-----------------------
-import streamlit as st
-import pandas as pd
 
-st.title("PolyExplore Data Upload")
-
-# Use Streamlit file uploaders
-import streamlit as st
-import pandas as pd
-
-st.title("PolyExplore Data Upload")
-
-# File upload widgets for all three Excel files
-FEATURES_FILE = st.file_uploader("Upload polyFeature & index Excel file", type="xlsx")
-LIBRARY_FILE = st.file_uploader("Upload polymer library Excel file", type="xlsx")
-SMILES_FILE = st.file_uploader("Upload SMILES Excel file", type="xlsx")
-
+# -------------------- DATA LOADING --------------------
 @st.cache_data(show_spinner=False)
 def load_data(features_file, library_file):
-    features = pd.read_excel(features_file, sheet_name='polyFeature', index_col=0)
-    properties = pd.read_excel(features_file, sheet_name='polyIndex', index_col=0)
-    library = pd.read_excel(library_file, sheet_name='reference', index_col=0)
-    return features, properties, library
+    try:
+        features = pd.read_excel(features_file, sheet_name='polyFeature', index_col=0)
+        properties = pd.read_excel(features_file, sheet_name='polyIndex', index_col=0)
+        library = pd.read_excel(library_file, sheet_name='reference', index_col=0)
+        return features, properties, library
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None, None, None
 
 @st.cache_data(show_spinner=False)
 def load_smiles(smiles_file):
-    df = pd.read_excel(smiles_file, sheet_name='SMILES')
-    if 'Polymer' not in df.columns:
-        raise KeyError("'Polymer' column not found in SMILES sheet")
-    df.set_index('Polymer', inplace=True)
-    return df
+    try:
+        df = pd.read_excel(smiles_file, sheet_name='SMILES')
+        if 'Polymer' not in df.columns:
+            raise KeyError("'Polymer' column not found in SMILES sheet")
+        df.set_index('Polymer', inplace=True)
+        return df
+    except Exception as e:
+        st.error(f"Error loading SMILES data: {e}")
+        return pd.DataFrame()
 
-# Load only if all files uploaded
-if FEATURES_FILE and LIBRARY_FILE and SMILES_FILE:
-    features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
-    smiles_df = load_smiles(SMILES_FILE)
+# --- Load datasets ---
+features, properties, library = load_data(
+    "polyeXplore model feature & index.xlsx", 
+    "polyeXplore polymer library data.xlsx"
+)
+smiles_df = load_smiles("polyeXplore_smiles.xlsx")
 
-    st.success("All data loaded!")
-    st.write(features.head())
-    st.write(properties.head())
-    st.write(library.head())
-    st.write(smiles_df.head())
-else:
-    st.warning("Please upload all required Excel files above.")
-## DATA LOADING REVISITED END -----------------------
-# Call functions with explicit parameters
-features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
-smiles_df = load_smiles(SMILES_FILE)
+
+if features is None or properties is None or library is None or smiles_df.empty:
+    st.stop()  # Stop execution if data missing
+
 
 # --- PREPARE INDICES ---
-
 ppi = pd.DataFrame(features.values.dot(properties.values),
                    index=features.index,
                    columns=properties.columns)
-ppi_mean = ppi.mean()
-ppi_std = ppi.std(ddof=0)
+ppi_mean, ppi_std = ppi.mean(), ppi.std(ddof=0)
 ppi_z = (ppi - ppi_mean) / ppi_std
+
 
 # --- STREAMLIT APP Title, copyright info ---
 
@@ -152,8 +109,7 @@ st.markdown(", ".join(features.columns))
 st.markdown("### 📊 Polymer properties influenced by SF's of polymer RU")
 st.markdown(", ".join(properties.columns))
 
-# --- USER FEATURE INPUT ---
-
+# -------------------- USER INPUT --------------------
 if "polymer" not in st.session_state:
     st.session_state.polymer = ""
 if "user_vals" not in st.session_state:
@@ -161,181 +117,55 @@ if "user_vals" not in st.session_state:
 if "input_saved" not in st.session_state:
     st.session_state.input_saved = False
 
-st.markdown("### 📊 Structural features of repeat units of polymers - exploration of influence vector")
-st.markdown("Enter structural features of a polymer repeat unit to visualize its influence on property.")
-
-valid_polymers = [str(p).upper() for p in features.index]
-dataset_cols = list(features.columns)
-
-
-# rdkit strat
-# --- Polymer name input and 3D visualization (before form) ---
-
-polymer_name_input = st.text_input(
-    "Enter the polymer name (use CAPITAL letters and numbers, example POM, PA66):", 
-    value=st.session_state.polymer
-).strip()
-
-if polymer_name_input:
-    if polymer_name_input in smiles_df.index:
-        smiles = smiles_df.loc[polymer_name_input, "SMILE_repeating_unit"]
-        mol = Chem.MolFromSmiles(smiles)
-        
-        if mol:
-            mol_3d = Chem.AddHs(mol)
-            AllChem.EmbedMolecule(mol_3d, AllChem.ETKDG())
-            AllChem.UFFOptimizeMolecule(mol_3d)
-            
-
-            mol_block = Chem.MolToMolBlock(mol_3d)
-            view = py3Dmol.view(width=600, height=400)
-            view.addModel(mol_block, 'mol')
-            view.setStyle({'stick': {}})
-            view.zoomTo()
-            view.show()
-            # Add border around viewer
-            view_html = view._make_html()
-            bordered_html = f'''
-            <div style="border: 2px solid #888; border-radius: 10px; padding: 8px; width: 620px; margin: auto;">
-            {view_html}
-            </div>
-            '''
-            st.components.v1.html(bordered_html, height=450)
-
-            # Display SMILES and description if available
-
-            if "Description" in smiles_df.columns:
-                desc = smiles_df.loc[polymer_name_input, "Description"]
-                if desc and str(desc).strip():
-                    st.markdown(f"**Polymer Description:** {desc}")
-            
-            # (NEW) ---- DESCRIPTOR CALCULATION & DISPLAY SECTION -----
-            def calculate_properties(smiles):
-                try:
-                    mol = Chem.MolFromSmiles(smiles)
-                    if mol is None:
-                        return [None]*8  # Always 8 fields!
-                    molwt = Descriptors.MolWt(mol)
-                    tpsa = rdMolDescriptors.CalcTPSA(mol)
-                    logp = Crippen.MolLogP(mol)
-                    rot_bonds = Lipinski.NumRotatableBonds(mol)
-                    hetero_atoms = Descriptors.NumHeteroatoms(mol)
-                    hba = Lipinski.NumHAcceptors(mol)
-                    hbd = Lipinski.NumHDonors(mol)
-                    num_rings = rdMolDescriptors.CalcNumRings(mol)
-                    return [molwt, tpsa, logp, rot_bonds, hetero_atoms, hba, hbd, num_rings]
-                except Exception as e:
-                    return [None]*8
-            
-            prop_names = [
-                "Molecular Weight (g/mol)", "Topological polar surface area(TPSA) (Å²)", "LogP", 
-                "Rotatable Bonds", "Heteroatoms", "H-Bond Acceptors", 
-                "H-Bond Donors", "Number of Rings"
-            ]
-            # ... inside your `if mol:` block after description section
-            ref_polymer = "PE"
-            ref_smiles = smiles_df.loc[ref_polymer, "SMILE_repeating_unit"]
-            ref_props = calculate_properties(ref_smiles)
-
-            sel_polymer = polymer_name_input
-            sel_smiles = smiles_df.loc[sel_polymer, "SMILE_repeating_unit"]
-            sel_props = calculate_properties(sel_smiles)
-
-            prop_names = [
-                "Molecular Weight (g/mol)", "TPSA (Å²)", "LogP", 
-                "Rotatable Bonds", "Heteroatoms", "H-Bond Acceptors", 
-                "H-Bond Donors", "Number of Rings"
-            ]
-
-            comp_df = pd.DataFrame({ref_polymer: ref_props, sel_polymer: sel_props}, index=prop_names)
-
-            st.markdown("### Molecular Descriptor Comparison (Repeat Unit)")
-            st.markdown(comp_df.to_markdown())
-            
+# polymer_name_input = st.text_input(
+#     "Enter the polymer name (CAPITAL letters, e.g., POM, PA66):", 
+#     value=st.session_state.polymer
+# ).strip()
 
 
-            # --------------------------------------------------------
-        else:
-            st.error("Invalid SMILES string for this polymer.")
-    else:
-        st.warning("Polymer name not found in SMILES database. Please check spelling.")
+# -------------------- Polymer Input + 3D Visualization --------------------
+with st.form("polymer_input_form"):
+    polymer_name_input = st.text_input(
+        "Enter the polymer name (CAPITAL letters, e.g., POM, PA66):", 
+        value=st.session_state.polymer
+    ).strip()
 
-#rdkit end
+    submitted_polymer = st.form_submit_button("Submit")
 
-# --- Function to show comparison of user input vs dataset values ---
+if submitted_polymer:
+    if polymer_name_input:
+        if polymer_name_input in smiles_df.index:
+            smile_str = smiles_df.loc[polymer_name_input, "SMILE_repeating_unit"]
+            mol = Chem.MolFromSmiles(smile_str)
 
-def show_comparison():
-    polymer = st.session_state.polymer
-    user_vals = st.session_state.user_vals
-    user_series = pd.Series(user_vals, name=f"{polymer}-user")
-    orig_series = features.loc[polymer, dataset_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0)
-    orig_series.name = f"{polymer}-data"
-    compare_df = pd.concat([orig_series, user_series], axis=1)
+            if mol:
+                mol_3d = Chem.AddHs(mol)
+                AllChem.EmbedMolecule(mol_3d, AllChem.ETKDG())
+                AllChem.UFFOptimizeMolecule(mol_3d)
 
-    st.subheader("📊 Feature scores — user input vs dataset")
-    st.dataframe(compare_df)
+                mol_block = Chem.MolToMolBlock(mol_3d)
+                view = py3Dmol.view(width=600, height=400)
+                view.addModel(mol_block, 'mol')
+                view.setStyle({'stick': {}})
+                view.zoomTo()
 
-    y = np.arange(len(compare_df))
-    h = 0.35
-    fig, ax = plt.subplots(figsize=(5, 3))
-    ax.barh(y - h/2, compare_df.iloc[:, 0], h, label=compare_df.columns[0])
-    ax.barh(y + h/2, compare_df.iloc[:, 1], h, label=compare_df.columns[1])
-    ax.set_xlabel("Feature Value")
-    ax.set_title(f"Structural Features: {polymer} — user vs dataset")
-    ax.set_yticks(y)
-    ax.set_yticklabels(compare_df.index)
-    ax.invert_yaxis()
-    ax.legend()
-    fig.tight_layout()
-    st.pyplot(fig)
+                bordered_html = f'''
+                <div style="border: 2px solid #888; border-radius: 10px; 
+                            padding: 8px; width: 620px; margin: auto;">
+                {view._make_html()}
+                </div>
+                '''
+                st.components.v1.html(bordered_html, height=450)
 
-# --- FORM INPUT ---
-if st.session_state.input_saved:
-    st.success(f"✅ Inputs saved for **{st.session_state.polymer}**.")
-    with st.expander("Show saved feature inputs"):
-        st.dataframe(pd.Series(st.session_state.user_vals, name="Value"))
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Edit inputs"):
-            st.session_state.input_saved = False
-    with c2:
-        if st.button("Reset inputs"):
-            st.session_state.polymer = ""
-            st.session_state.user_vals = {c: 0.0 for c in features.columns}
-            st.session_state.input_saved = False
-    if st.session_state.input_saved and st.session_state.polymer:
-        show_comparison()
-else:
-    with st.form("user_entry_form", clear_on_submit=False):
-        st.markdown("**Enter features for polymer:**")
-              
-        cols_per_row = 4
-        for i, fname in enumerate(dataset_cols):
-            if i % cols_per_row == 0:
-                row = st.columns(cols_per_row)
-            col = row[i % cols_per_row]
-            st.session_state.user_vals[fname] = col.number_input(
-                label=fname,
-                value=float(st.session_state.user_vals.get(fname, 0.0)),
-                step=0.1,
-                format="%.3f",
-                key=f"feat_{fname}"
-            )
-        submitted = st.form_submit_button("Save")
-        if submitted:
-            polymer = polymer_name_input.upper().strip()
-            if not polymer:
-                st.error("Please enter a polymer name.")
-            elif polymer not in valid_polymers:
-                st.error("❌ Polymer not found. Please enter a valid polymer name.")
-                sugg = difflib.get_close_matches(polymer, valid_polymers, n=5, cutoff=0.6)
-                if sugg:
-                    st.caption("Did you mean: " + ", ".join(sugg))
+                if "Description" in smiles_df.columns:
+                    desc = smiles_df.loc[polymer_name_input, "Description"]
+                    if pd.notna(desc):
+                        st.markdown(f"**Polymer Description:** {desc}")
             else:
-                st.session_state.polymer = polymer
-                st.session_state.input_saved = True
-                st.success(f"✅ Saved inputs for **{polymer}**. Continue to the sections below.")
-                show_comparison()
+                st.error("Invalid SMILES string for this polymer.")
+        else:
+            st.warning("Polymer name not found in SMILES database.")
+
 
 # --- NEAREST POLYMERS ---
 st.markdown("### 📊 Nearest equivalent polymers based on structural features input")
