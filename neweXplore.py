@@ -20,15 +20,47 @@ from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen
 import py3Dmol
 
 
-# --- DATA LOADING ---
-# Define data file paths
+# # --- DATA LOADING ---
+# # Define data file paths
 
-DATA_DIR = 'E:/15 Polyexplore/predictions_polyprop/'
-FEATURES_FILE = DATA_DIR + 'polyeXplore model feature & index.xlsx'
-LIBRARY_FILE = DATA_DIR + 'polyeXplore polymer library data.xlsx'
-SMILES_FILE = DATA_DIR + 'polyeXplore_smiles.xlsx'
+# DATA_DIR = 'E:/15 Polyexplore/predictions_polyprop/'
+# FEATURES_FILE = DATA_DIR + 'polyeXplore model feature & index.xlsx'
+# LIBRARY_FILE = DATA_DIR + 'polyeXplore polymer library data.xlsx'
+# SMILES_FILE = DATA_DIR + 'polyeXplore_smiles.xlsx'
 
-# --- CONFIG ---
+# # --- CONFIG ---
+
+# @st.cache_data(show_spinner=False)
+# def load_data(features_file, library_file):
+#     features = pd.read_excel(features_file, sheet_name='polyFeature', index_col=0)
+#     properties = pd.read_excel(features_file, sheet_name='polyIndex', index_col=0)
+#     library = pd.read_excel(library_file, sheet_name='reference', index_col=0)
+#     return features, properties, library
+
+
+# @st.cache_data(show_spinner=False)
+# def load_smiles(smiles_file):
+#     df = pd.read_excel(smiles_file, sheet_name='SMILES')
+#     if 'Polymer' not in df.columns:
+#         raise KeyError("'Polymer' column not found in SMILES sheet")
+#     df.set_index('Polymer', inplace=True)
+#     return df
+
+
+# # Call functions with explicit parameters
+# features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
+# smiles_df = load_smiles(SMILES_FILE)
+
+## DATA LOADING REVISITED-----------------------
+import streamlit as st
+import pandas as pd
+
+st.title("PolyExplore Data Upload")
+
+# Use Streamlit file uploaders
+FEATURES_FILE = st.file_uploader("Upload polyFeature & index Excel file", type="xlsx")
+LIBRARY_FILE = st.file_uploader("Upload polymer library Excel file", type="xlsx")
+SMILES_FILE = st.file_uploader("Upload SMILES Excel file", type="xlsx")
 
 @st.cache_data(show_spinner=False)
 def load_data(features_file, library_file):
@@ -36,7 +68,6 @@ def load_data(features_file, library_file):
     properties = pd.read_excel(features_file, sheet_name='polyIndex', index_col=0)
     library = pd.read_excel(library_file, sheet_name='reference', index_col=0)
     return features, properties, library
-
 
 @st.cache_data(show_spinner=False)
 def load_smiles(smiles_file):
@@ -46,6 +77,22 @@ def load_smiles(smiles_file):
     df.set_index('Polymer', inplace=True)
     return df
 
+# Load data only if all files are uploaded
+if FEATURES_FILE and LIBRARY_FILE and SMILES_FILE:
+    features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
+    smiles_df = load_smiles(SMILES_FILE)
+
+    st.success("All data loaded!")
+    # Optionally show previews
+    st.write(features.head())
+    st.write(properties.head())
+    st.write(library.head())
+    st.write(smiles_df.head())
+else:
+    st.warning("Please upload all required Excel files above.")
+
+
+### DATA LOADING REVISED END -----------------------
 
 # Call functions with explicit parameters
 features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
