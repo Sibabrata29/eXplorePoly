@@ -1,0 +1,14 @@
+name: polyex_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - rdkit
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - streamlit
+  - scikit-learn
+  - py3dmol
+  - openpyxl
