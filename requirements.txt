@@ -3,7 +3,9 @@ numpy
 matplotlib
 seaborn
 streamlit
+rdkit-pypi
 scikit-learn
 py3dmol
 openpyxl
+
 
