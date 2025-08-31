@@ -58,6 +58,12 @@ import pandas as pd
 st.title("PolyExplore Data Upload")
 
 # Use Streamlit file uploaders
+import streamlit as st
+import pandas as pd
+
+st.title("PolyExplore Data Upload")
+
+# File upload widgets for all three Excel files
 FEATURES_FILE = st.file_uploader("Upload polyFeature & index Excel file", type="xlsx")
 LIBRARY_FILE = st.file_uploader("Upload polymer library Excel file", type="xlsx")
 SMILES_FILE = st.file_uploader("Upload SMILES Excel file", type="xlsx")
@@ -77,23 +83,19 @@ def load_smiles(smiles_file):
     df.set_index('Polymer', inplace=True)
     return df
 
-# Load data only if all files are uploaded
+# Load only if all files uploaded
 if FEATURES_FILE and LIBRARY_FILE and SMILES_FILE:
     features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
     smiles_df = load_smiles(SMILES_FILE)
 
     st.success("All data loaded!")
-    # Optionally show previews
     st.write(features.head())
     st.write(properties.head())
     st.write(library.head())
     st.write(smiles_df.head())
 else:
     st.warning("Please upload all required Excel files above.")
-
-
-### DATA LOADING REVISED END -----------------------
-
+## DATA LOADING REVISITED END -----------------------
 # Call functions with explicit parameters
 features, properties, library = load_data(FEATURES_FILE, LIBRARY_FILE)
 smiles_df = load_smiles(SMILES_FILE)
