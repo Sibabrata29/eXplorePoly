@@ -334,8 +334,8 @@ with st.expander("3. User Feature Input & Comparison"):
     # --- Feature input form ---
     if st.session_state.input_saved:
         st.success(f"✅ Inputs saved for **{st.session_state.polymer}**.")
-        with st.expander("Show saved feature inputs"):
-            st.dataframe(pd.Series(st.session_state.user_vals, name="Value"))
+        
+        st.dataframe(pd.Series(st.session_state.user_vals, name="Value"))
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Edit inputs"):
@@ -377,6 +377,8 @@ with st.expander("3. User Feature Input & Comparison"):
                     st.session_state.input_saved = True
                     st.success(f"✅ Saved inputs for **{polymer}**.")
                     show_comparison()
+with st.expander("Show saved feature inputs"):
+    st.dataframe(pd.Series(st.session_state.user_vals, name="Value"))
 
 # ============================== 4. NEAREST EQUIVALENT POLYMERS ================================
 # 👉 Section 4 expander (NN search, plots, features table, properties table)
