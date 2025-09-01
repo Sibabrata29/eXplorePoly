@@ -19,10 +19,8 @@ from rdkit.Chem.Draw import rdMolDraw2D
 from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen
 import py3Dmol
 
-
-## DATA LOADING REVISITED-----------------------
-
 # -------------------- DATA LOADING --------------------
+
 @st.cache_data(show_spinner=False)
 def load_data(features_file, library_file):
     try:
@@ -46,11 +44,13 @@ def load_smiles(smiles_file):
         st.error(f"Error loading SMILES data: {e}")
         return pd.DataFrame()
 
-# --- Load datasets ---
+# -------------------- Load datasets ----------------------
+
 features, properties, library = load_data(
     "polyeXplore model feature & index.xlsx", 
     "polyeXplore polymer library data.xlsx"
 )
+
 smiles_df = load_smiles("polyeXplore_smiles.xlsx")
 
 
@@ -58,7 +58,8 @@ if features is None or properties is None or library is None or smiles_df.empty:
     st.stop()  # Stop execution if data missing
 
 
-# --- PREPARE INDICES ---
+# --------------------- PREPARE INDICES  ----------------------------
+
 ppi = pd.DataFrame(features.values.dot(properties.values),
                    index=features.index,
                    columns=properties.columns)
@@ -66,7 +67,7 @@ ppi_mean, ppi_std = ppi.mean(), ppi.std(ddof=0)
 ppi_z = (ppi - ppi_mean) / ppi_std
 
 
-# --- STREAMLIT APP Title, copyright info ---
+# ================================ 1 HEADER & INTRODUCTION =================================
 
 
 st.title("PolyeXplore : Polymer exploration model")
@@ -101,7 +102,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- DATA OVERVIEW ---
+# --------------------------- DATA OVERVIEW -----------------------------
 
 st.markdown("### 📊 Key structural features (SF) of polymer repeat Unit (RU)")
 st.markdown(", ".join(features.columns))
@@ -109,7 +110,11 @@ st.markdown(", ".join(features.columns))
 st.markdown("### 📊 Polymer properties influenced by SF's of polymer RU")
 st.markdown(", ".join(properties.columns))
 
-# -------------------- USER INPUT --------------------
+# ---------------------------------- USER INPUT -------------------------------------
+st.markdown("### User input: Quantify structural features of polymer repeat unit")
+st.markdown("Enter the polymer name and quantify the structural features of its repeat unit below.")
+
+# Initialize session state variables
 if "polymer" not in st.session_state:
     st.session_state.polymer = ""
 if "user_vals" not in st.session_state:
@@ -117,13 +122,8 @@ if "user_vals" not in st.session_state:
 if "input_saved" not in st.session_state:
     st.session_state.input_saved = False
 
-# polymer_name_input = st.text_input(
-#     "Enter the polymer name (CAPITAL letters, e.g., POM, PA66):", 
-#     value=st.session_state.polymer
-# ).strip()
+# ============================= 2. Polymer Input + RDKIT 3D + DESCRIPTOR =====
 
-
-# -------------------- Polymer Input + 3D Visualization --------------------
 with st.form("polymer_input_form"):
     polymer_name_input = st.text_input(
         "Enter the polymer name (CAPITAL letters, e.g., POM, PA66):", 
@@ -166,8 +166,138 @@ if submitted_polymer:
         else:
             st.warning("Polymer name not found in SMILES database.")
 
+# -------------- RDKIT DESCRIPTOR ANALYSIS PE vs SUBMITTED POLYMER -------------- 
+  
+        def calculate_properties(smiles):
+                try:
+                    mol = Chem.MolFromSmiles(smiles)
+                    if mol is None:
+                        return [None]*8  # Always 8 fields!
+                    molwt = Descriptors.MolWt(mol)
+                    tpsa = rdMolDescriptors.CalcTPSA(mol)
+                    logp = Crippen.MolLogP(mol)
+                    rot_bonds = Lipinski.NumRotatableBonds(mol)
+                    hetero_atoms = Descriptors.NumHeteroatoms(mol)
+                    hba = Lipinski.NumHAcceptors(mol)
+                    hbd = Lipinski.NumHDonors(mol)
+                    num_rings = rdMolDescriptors.CalcNumRings(mol)
+                    return [molwt, tpsa, logp, rot_bonds, hetero_atoms, hba, hbd, num_rings]
+                except Exception as e:
+                    return [None]*8
+            
+        prop_names = [
+            "Molecular Weight (g/mol)", "Topological polar surface area(TPSA) (Å²)", "LogP", 
+            "Rotatable Bonds", "Heteroatoms", "H-Bond Acceptors", 
+            "H-Bond Donors", "Number of Rings"
+        ]
+                # ... inside your `if mol:` block after description section
+        ref_polymer = "PE"
+        ref_smiles = smiles_df.loc[ref_polymer, "SMILE_repeating_unit"]
+        ref_props = calculate_properties(ref_smiles)
 
-# --- NEAREST POLYMERS ---
+        sel_polymer = polymer_name_input
+        sel_smiles = smiles_df.loc[sel_polymer, "SMILE_repeating_unit"]
+        sel_props = calculate_properties(sel_smiles)
+
+        prop_names = [
+            "Molecular Weight (g/mol)", "TPSA (Å²)", "LogP", 
+            "Rotatable Bonds", "Heteroatoms", "H-Bond Acceptors", 
+            "H-Bond Donors", "Number of Rings"
+        ]
+
+        comp_df = pd.DataFrame({ref_polymer: ref_props, sel_polymer: sel_props}, index=prop_names)
+
+        st.markdown("### Molecular Descriptor Comparison (Repeat Unit)")
+        st.markdown(comp_df.to_markdown())
+        st.markdown("Note: Descriptors are calculated for the repeat unit only, not the full polymer chain. " \
+        "A comparison with PE oligomer is provided as a reference.")
+    else:
+        st.error("Invalid SMILES string for this polymer.")
+else:
+    st.warning("Polymer name not found in SMILES database. Please check spelling.")
+
+# ======================== 3. USER FEATURE INPUT & COMPARISON ========================
+
+st.markdown("### 📊 Structural features of repeat units of polymers - exploration of influence vector")
+st.markdown("Enter quantified structural features of a polymer repeat unit to visualize its influence on properties.")
+
+valid_polymers = [str(p).upper() for p in features.index]
+dataset_cols = list(features.columns)
+
+def show_comparison():
+    polymer = st.session_state.polymer
+    user_vals = st.session_state.user_vals
+    user_series = pd.Series(user_vals, name=f"{polymer}-user")
+    orig_series = features.loc[polymer, dataset_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    orig_series.name = f"{polymer}-data"
+    compare_df = pd.concat([orig_series, user_series], axis=1)
+
+    st.subheader("📊 Feature scores — user input vs dataset")
+    st.dataframe(compare_df)
+
+    y = np.arange(len(compare_df))
+    h = 0.35
+    fig, ax = plt.subplots(figsize=(5, 3))
+    ax.barh(y - h/2, compare_df.iloc[:, 0], h, label=compare_df.columns[0])
+    ax.barh(y + h/2, compare_df.iloc[:, 1], h, label=compare_df.columns[1])
+    ax.set_xlabel("Feature Value")
+    ax.set_title(f"Structural Features: {polymer} — user vs dataset")
+    ax.set_yticks(y)
+    ax.set_yticklabels(compare_df.index)
+    ax.invert_yaxis()
+    ax.legend()
+    fig.tight_layout()
+    st.pyplot(fig)
+
+# --- Feature input form ---
+if st.session_state.input_saved:
+    st.success(f"✅ Inputs saved for **{st.session_state.polymer}**.")
+    with st.expander("Show saved feature inputs"):
+        st.dataframe(pd.Series(st.session_state.user_vals, name="Value"))
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Edit inputs"):
+            st.session_state.input_saved = False
+    with c2:
+        if st.button("Reset inputs"):
+            st.session_state.polymer = ""
+            st.session_state.user_vals = {c: 0.0 for c in features.columns}
+            st.session_state.input_saved = False
+    if st.session_state.input_saved and st.session_state.polymer:
+        show_comparison()
+else:
+    with st.form("user_entry_form", clear_on_submit=False):
+        st.markdown("**Enter structural feature values for the polymer:**")
+        cols_per_row = 4
+        for i, fname in enumerate(dataset_cols):
+            if i % cols_per_row == 0:
+                row = st.columns(cols_per_row)
+            col = row[i % cols_per_row]
+            st.session_state.user_vals[fname] = col.number_input(
+                label=fname,
+                value=float(st.session_state.user_vals.get(fname, 0.0)),
+                step=0.1,
+                format="%.3f",
+                key=f"feat_{fname}"
+            )
+        submitted_features = st.form_submit_button("Save")
+        if submitted_features:
+            polymer = polymer_name_input.upper().strip()
+            if not polymer:
+                st.error("Please enter a polymer name above.")
+            elif polymer not in valid_polymers:
+                st.error("❌ Polymer not found in dataset index.")
+                sugg = difflib.get_close_matches(polymer, valid_polymers, n=5, cutoff=0.6)
+                if sugg:
+                    st.caption("Did you mean: " + ", ".join(sugg))
+            else:
+                st.session_state.polymer = polymer
+                st.session_state.input_saved = True
+                st.success(f"✅ Saved inputs for **{polymer}**.")
+                show_comparison()
+
+# ============================== 4. NEAREST EQUIVALENT POLYMERS ================================
+
 st.markdown("### 📊 Nearest equivalent polymers based on structural features input")
 
 if not st.session_state.get("input_saved"):
@@ -264,7 +394,8 @@ else:
     st.markdown("Note: The nearest polymers are determined based on Euclidean distance in the standardized property index space.")
 
 
-# ===== Category-based polymer selection =====
+# =========================== 5. POLYMER PROPERTY HIERARCHY ============================
+
 st.markdown("### Polymer property hierarchy by category")
 
 # Define categories and their polymers (in desired order)
@@ -360,7 +491,9 @@ else:
     st.info("Please select at least one polymer and one property to display.")
 
 
-# Random sample heatmap of 5 polymers & 3 properties
+# ========================== 6. RANDOM SELECTIONS & CORRELATIONS OF POLYMER & PROPERTY =========================
+# Random selection of polymers and properties
+import random
 st.markdown("### Random polymer property rankings")
 random_polymers = ppi.sample(n=5)
 random_props = np.random.choice(ppi.columns, size=3, replace=False)
@@ -374,6 +507,8 @@ ax.set_xlabel("Property")
 ax.set_ylabel("Polymer")
 plt.xticks(rotation=45, ha='right')
 st.pyplot(fig)
+
+# ========================== 7. CORRELATION ANALYSIS OF FEATURES & PROPERTIES =========================
 
 # Polymer Feature-Property Correlation Matrix
 st.markdown("### Polymer Feature-Property Correlation")
@@ -389,40 +524,96 @@ ax.set_title("Correlation between Structural Features and Polymer Properties")
 plt.xticks(rotation=45, ha='right')
 st.pyplot(fig)
 
-# Sign map of positive, negative and neutral correlations
-st.markdown("### Sign Map of structural features vs polymer properties")
-sign_matrix = corr_matrix.applymap(lambda x: "Positive" if x > 0 else ("Negative" if x < 0 else "Neutral"))
+
+# ========================= 8. POSITIVE NEGATIVE INFLUENCE - FEATURES vs PROPERTY ============================
+
+# --- Sign map (with random subset) ---
+st.markdown("### Influence Map of structural features vs polymer properties (random selection)")
+st.markdown(
+    "<p style='font-size:16px; font-weight:500; color:black;'>Influence Map</p>", 
+    unsafe_allow_html=True
+)
+
+# Pick random subset of 3 features and 3 properties
+rand_features = np.random.choice(features.columns, size=3, replace=False)
+rand_properties = np.random.choice(ppi.columns, size=3, replace=False)
+
+corr_subset = corr_matrix.loc[rand_features, rand_properties]
+
+sign_matrix = corr_subset.applymap(
+    lambda x: "Positive" if x > 0 else ("Negative" if x < 0 else "Neutral")
+)
 
 color_map = {
-    "Positive": "background-color: #d73027; color: white;",  # RdYlBu red/orange
-    "Negative": "background-color: #4575b4; color: white;",  # RdYlBu blue
-    "Neutral": "background-color: #ffffbf; color: black;",   # RdYlBu yellow/neutral
+    "Positive": "background-color: #d73027; color: white;",
+    "Negative": "background-color: #4575b4; color: white;",
+    "Neutral": "background-color: #ffffbf; color: black;",
 }
-
 
 def style_sign_cells(val):
     return color_map.get(val, "")
 
 styled_sign_matrix = sign_matrix.style.applymap(style_sign_cells)
 st.dataframe(styled_sign_matrix)
+st.caption("Note: Random subset of 3 features × 3 properties is shown. Refresh the app to see another sample.")
 
-# Top 3 features per property - positive and negative correlations
-st.markdown("### Top 3 structural features influencing property")
+# --- Top 3 structural features influencing property (sample view) ---
+
+# --- Top 3 structural features influencing property (sample view) ---
+
+st.markdown("### Top 3 structural features influencing selected properties")
+
+# Pick random 3 properties
+# --- Top 3 structural features influencing property (sample view) ---
+
+st.markdown("### Top 3 structural features influencing selected properties")
+
+# Pick random 3 properties
+rand_props = np.random.choice(corr_matrix.columns, size=3, replace=False)
+
 top_features_list = []
-for prop in corr_matrix.columns:
+for prop in rand_props:
     series = corr_matrix[prop].dropna()
-    top_pos = series[series > 0].nlargest(3)
-    top_neg = series[series < 0].nsmallest(3)
-    
-    for feat, val in top_pos.items():
-        top_features_list.append({"Property": prop, "Feature": feat, "Correlation": val, "Direction": "Positive"})
-    for feat, val in top_neg.items():
-        top_features_list.append({"Property": prop, "Feature": feat, "Correlation": val, "Direction": "Negative"})
 
+    # Top 3 by absolute correlation
+    top_abs = series.reindex(series.abs().sort_values(ascending=False).index[:3])
+
+    for feat, val in top_abs.items():
+        top_features_list.append({
+            "Property": prop,
+            "Feature": feat,
+            "Correlation": round(val, 4),
+            "Direction": "Positive" if val > 0 else "Negative" if val < 0 else "Neutral"
+        })
+
+# Convert to DataFrame
 top_features_df = pd.DataFrame(top_features_list)
-st.dataframe(top_features_df)
 
-# --- Cumulative Positive/Negative Contribution per Property ---
+# Reset index to drop the 0,1,2... serial numbers
+top_features_df = top_features_df.reset_index(drop=True)
+
+# Collapse duplicate Property entries for a cleaner grouped look
+df_display = top_features_df.copy()
+df_display["Property"] = df_display["Property"].where(
+    df_display["Property"].ne(df_display["Property"].shift()), ""
+)
+
+# Apply red (positive) / blue (negative) styling
+def color_corr(val):
+    if val > 0:
+        return "color: red; font-weight:600;"
+    elif val < 0:
+        return "color: blue; font-weight:600;"
+    return ""
+
+styled_df = df_display.style.applymap(color_corr, subset=["Correlation"])
+
+st.dataframe(styled_df, use_container_width=True)
+
+st.caption("Note: Random 3 properties are sampled each time. Refresh app for new selection.")
+
+
+# ===================== 9. Cumulative Positive/Negative Contribution per Property ========
 
 st.markdown("### 📊 Positive vs Negative contribution of structural features to property index")
 
@@ -474,7 +665,7 @@ summary_df = pd.DataFrame({
     "Negative": neg_sum
 }, index=properties_subset)
 
-
+# ============================== 10. CONCLUSION & NEXT STEPS ================================
 st.markdown("### Conclusion")
 
 st.markdown(
