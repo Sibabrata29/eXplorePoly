@@ -559,10 +559,6 @@ st.caption("Note: Random subset of 3 features × 3 properties is shown. Refresh 
 
 # --- Top 3 structural features influencing property (sample view) ---
 
-# --- Top 3 structural features influencing property (sample view) ---
-
-st.markdown("### Top 3 structural features influencing selected properties")
-
 # Pick random 3 properties
 # --- Top 3 structural features influencing property (sample view) ---
 
