@@ -262,23 +262,13 @@ with st.expander("2. Polymer Input + 3D Visualization"):
 with st.expander("3. User Feature Input & Comparison"):
     st.markdown("### 📊 Structural features of repeat units of polymers - exploration of influence vector")
     st.markdown(
-    """
-    <div style='text-align: justify;'>
-    Here user can submit scores for the structural features of a polymer. A score for each features in the 
-    range of -5 to +5 is adopted for assesing the weightage of the respective features on property except in 
-    chain flexibility score may be +10 for highly flexible polymer backbone (like PE). Other scores are self-explainatory. 
-    Input values are then compared against dataset values, enabling user to visualize 
-    how it aligns with reference structural visualization.
-    </div>
-    """,
-    unsafe_allow_html=True
-    )
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    st.markdown(
         """
         <div style='text-align: justify;'>
-        Enter scores for structural features of a polymer repeat unit to visualize its influence on properties.
+        Here user can submit scores for the structural features of a polymer. A score for each feature in the 
+        range of -5 to +5 is adopted for assessing the weightage on property, except chain flexibility 
+        (can be +10 for highly flexible backbones like PE). 
+        Input values are then compared against dataset values, enabling visualization 
+        of how it aligns with reference data.
         </div>
         """,
         unsafe_allow_html=True
@@ -290,26 +280,17 @@ with st.expander("3. User Feature Input & Comparison"):
     def show_comparison():
         polymer = st.session_state.polymer
         user_vals = st.session_state.user_vals
-        user_series = pd.Series(user_vals, name=f"{polymer}-user")
+        user_series = pd.Series(user_vals, name=f"{polymer}-USER")
         orig_series = features.loc[polymer, dataset_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0)
-        orig_series.name = f"{polymer}-data"
+        orig_series.name = f"{polymer}-DATA"
         compare_df = pd.concat([orig_series, user_series], axis=1)
 
         st.subheader("📊 Feature scores — user input vs dataset")
-        st.markdown(
-    """
-    <div style='text-align: justify;'>
-    This table compares the features as attributes to polymer property. 
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-                # add a small gap
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(
-    "<p style='font-size:16px; font-weight:500; color:black;'>Table - Feature Scores</p>", 
-    unsafe_allow_html=True
-    )
+            "<p style='font-size:16px; font-weight:500; color:black;'>Table - Feature Scores</p>", 
+            unsafe_allow_html=True
+        )
         st.dataframe(compare_df)
 
         y = np.arange(len(compare_df))
@@ -317,12 +298,8 @@ with st.expander("3. User Feature Input & Comparison"):
         fig, ax = plt.subplots(figsize=(5, 3))
         ax.barh(y - h/2, compare_df.iloc[:, 0], h, label=compare_df.columns[0])
         ax.barh(y + h/2, compare_df.iloc[:, 1], h, label=compare_df.columns[1])
-        ax.set_xlabel("Feature Value")
-        ax.set_title(
-    f"Structural Features: {polymer} — user vs dataset",
-    fontsize=8,        # smaller font size
-    loc="left"          # left align the title
-)
+        ax.set_xlabel("Feature Value", fontsize=8)
+        ax.set_title(f"Structural Features: {polymer} — user vs dataset", fontsize=8, loc="left")
         ax.set_yticks(y)
         ax.set_yticklabels(compare_df.index, fontsize=8)
         ax.invert_yaxis()
@@ -335,7 +312,6 @@ with st.expander("3. User Feature Input & Comparison"):
     if st.session_state.input_saved:
         st.success(f"✅ Inputs saved for **{st.session_state.polymer}**.")
         
-        st.dataframe(pd.Series(st.session_state.user_vals, name="Value"))
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Edit inputs"):
@@ -345,8 +321,10 @@ with st.expander("3. User Feature Input & Comparison"):
                 st.session_state.polymer = ""
                 st.session_state.user_vals = {c: 0.0 for c in features.columns}
                 st.session_state.input_saved = False
+
         if st.session_state.input_saved and st.session_state.polymer:
             show_comparison()
+
     else:
         with st.form("user_entry_form", clear_on_submit=False):
             st.markdown("**Enter structural feature values for the polymer:**")
@@ -377,8 +355,7 @@ with st.expander("3. User Feature Input & Comparison"):
                     st.session_state.input_saved = True
                     st.success(f"✅ Saved inputs for **{polymer}**.")
                     show_comparison()
-with st.expander("Show saved feature inputs"):
-    st.dataframe(pd.Series(st.session_state.user_vals, name="Value"))
+
 
 # ============================== 4. NEAREST EQUIVALENT POLYMERS ================================
 # 👉 Section 4 expander (NN search, plots, features table, properties table)
