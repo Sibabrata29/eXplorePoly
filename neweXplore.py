@@ -146,115 +146,120 @@ with st.expander("2. Polymer Input + 3D Visualization"):
 
 # ============================= 2. Polymer Input + RDKIT 3D + DESCRIPTOR =====
 
-    with st.form("polymer_input_form"):
-        polymer_name_input = st.text_input(
-            "Enter the polymer name (CAPITAL letters & ##, e.g., POM, PA66):", 
-            value=st.session_state.polymer
-        ).strip()
 
-        submitted_polymer = st.form_submit_button("Submit")
+# ============================= 2. Polymer Input + RDKIT 3D + DESCRIPTOR =====
 
-    if submitted_polymer:
-        if polymer_name_input:
-            if polymer_name_input in smiles_df.index:
-                smile_str = smiles_df.loc[polymer_name_input, "SMILE_repeating_unit"]
-                mol = Chem.MolFromSmiles(smile_str)
+with st.form("polymer_input_form"):
+    polymer_name_input = st.text_input(
+        "Enter the polymer name (CAPITAL letters & ##, e.g., POM, PA66):", 
+        value=st.session_state.polymer
+    ).strip()
 
-                if mol:
-                    mol_3d = Chem.AddHs(mol)
-                    AllChem.EmbedMolecule(mol_3d, AllChem.ETKDG())
-                    AllChem.UFFOptimizeMolecule(mol_3d)
+    submitted_polymer = st.form_submit_button("Submit")
 
-                    mol_block = Chem.MolToMolBlock(mol_3d)
-                    view = py3Dmol.view(width=600, height=400)
-                    view.addModel(mol_block, 'mol')
-                    view.setStyle({'stick': {}})
-                    view.zoomTo()
-                    st.markdown(
-        f"<p style='text-align: center; font-weight: 500;'>3D Structure of {polymer_name_input} Repeat Unit</p>",
-        unsafe_allow_html=True
-    )
-                    bordered_html = f'''
-                    <div style="border: 2px solid #888; border-radius: 10px; 
-                                padding: 8px; width: 620px; margin: auto;">
-                    {view._make_html()}
-                    </div>
-                    '''
-                    st.components.v1.html(bordered_html, height=450)
+if submitted_polymer:
+    if polymer_name_input:
+        if polymer_name_input in smiles_df.index:
+            smile_str = smiles_df.loc[polymer_name_input, "SMILE_repeating_unit"]
+            mol = Chem.MolFromSmiles(smile_str)
 
-                    if "Description" in smiles_df.columns:
-                        desc = smiles_df.loc[polymer_name_input, "Description"]
-                        if pd.notna(desc):
-                            st.markdown(f"**Polymer Description:** {desc}")
-                else:
-                    st.error("Invalid SMILES string for this polymer.")
+            if mol:
+                mol_3d = Chem.AddHs(mol)
+                AllChem.EmbedMolecule(mol_3d, AllChem.ETKDG())
+                AllChem.UFFOptimizeMolecule(mol_3d)
+
+                mol_block = Chem.MolToMolBlock(mol_3d)
+                view = py3Dmol.view(width=600, height=400)
+                view.addModel(mol_block, 'mol')
+                view.setStyle({'stick': {}})
+                view.zoomTo()
+
+                # Save viewer HTML + caption in session state
+                st.session_state.mol_view_html = view._make_html()
+                st.session_state.polymer_caption = f"3D Structure of {polymer_name_input} Repeat Unit"
+
+                st.markdown(
+                    f"<p style='text-align: center; font-weight: 500;'>3D Structure of {polymer_name_input} Repeat Unit</p>",
+                    unsafe_allow_html=True
+                )
+                bordered_html = f'''
+                <div style="border: 2px solid #888; border-radius: 10px; 
+                            padding: 8px; width: 620px; margin: auto;">
+                {view._make_html()}
+                </div>
+                '''
+                st.components.v1.html(bordered_html, height=450)
+
+                if "Description" in smiles_df.columns:
+                    desc = smiles_df.loc[polymer_name_input, "Description"]
+                    if pd.notna(desc):
+                        st.markdown(f"**Polymer Description:** {desc}")
             else:
-                st.warning("Polymer name not found in SMILES database.")
-
-    # -------------- RDKIT DESCRIPTOR ANALYSIS PE vs SUBMITTED POLYMER -------------- 
-    
-            def calculate_properties(smiles):
-                    try:
-                        mol = Chem.MolFromSmiles(smiles)
-                        if mol is None:
-                            return [None]*8  # Always 8 fields!
-                        molwt = Descriptors.MolWt(mol)
-                        tpsa = rdMolDescriptors.CalcTPSA(mol)
-                        logp = Crippen.MolLogP(mol)
-                        rot_bonds = Lipinski.NumRotatableBonds(mol)
-                        hetero_atoms = Descriptors.NumHeteroatoms(mol)
-                        hba = Lipinski.NumHAcceptors(mol)
-                        hbd = Lipinski.NumHDonors(mol)
-                        num_rings = rdMolDescriptors.CalcNumRings(mol)
-                        return [molwt, tpsa, logp, rot_bonds, hetero_atoms, hba, hbd, num_rings]
-                    except Exception as e:
-                        return [None]*8
-                
-            prop_names = [
-                "Molecular Weight (g/mol)", "Topological polar surface area(TPSA) (Å²)", "LogP", 
-                "Rotatable Bonds", "Heteroatoms", "H-Bond Acceptors", 
-                "H-Bond Donors", "Number of Rings"
-            ]
-                    # ... inside your `if mol:` block after description section
-            ref_polymer = "PE"
-            ref_smiles = smiles_df.loc[ref_polymer, "SMILE_repeating_unit"]
-            ref_props = calculate_properties(ref_smiles)
-
-            sel_polymer = polymer_name_input
-            sel_smiles = smiles_df.loc[sel_polymer, "SMILE_repeating_unit"]
-            sel_props = calculate_properties(sel_smiles)
-
-            prop_names = [
-                "Molecular Weight (g/mol)", "TPSA (Å²)", "LogP", 
-                "Rotatable Bonds", "Heteroatoms", "H-Bond Acceptors", 
-                "H-Bond Donors", "Number of Rings"
-            ]
-
-            comp_df = pd.DataFrame({ref_polymer: ref_props, sel_polymer: sel_props}, index=prop_names)
-
-            st.markdown("### Molecular Descriptor Comparison (Repeat Unit)")
-            st.markdown(
-    """
-    <div style='text-align: justify;'>
-    Molecular descriptors based on RDKit introduces funadmental molecular property based on 
-    classical group contribution theories and sets the stage for interactive exploration of feature vs property.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-            # add a small gap
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(
-        "<p style='font-size:16px; font-weight:500; color:black;'>Table - Molecular Descriptor using RDKit</p>", 
-        unsafe_allow_html=True
-    )
-            st.markdown(comp_df.to_markdown())
-            st.markdown("Note: Descriptors are calculated for the repeat unit only, not the full polymer chain. " \
-            "A comparison with PE oligomer is provided as a reference.")
+                st.error("Invalid SMILES string for this polymer.")
         else:
-            st.error("Invalid SMILES string for this polymer.")
+            st.warning("Polymer name not found in SMILES database.")
+
+        # -------------- RDKIT DESCRIPTOR ANALYSIS PE vs SUBMITTED POLYMER -------------- 
+        def calculate_properties(smiles):
+            try:
+                mol = Chem.MolFromSmiles(smiles)
+                if mol is None:
+                    return [None]*8  # Always 8 fields!
+                molwt = Descriptors.MolWt(mol)
+                tpsa = rdMolDescriptors.CalcTPSA(mol)
+                logp = Crippen.MolLogP(mol)
+                rot_bonds = Lipinski.NumRotatableBonds(mol)
+                hetero_atoms = Descriptors.NumHeteroatoms(mol)
+                hba = Lipinski.NumHAcceptors(mol)
+                hbd = Lipinski.NumHDonors(mol)
+                num_rings = rdMolDescriptors.CalcNumRings(mol)
+                return [molwt, tpsa, logp, rot_bonds, hetero_atoms, hba, hbd, num_rings]
+            except Exception:
+                return [None]*8
+        
+        prop_names = [
+            "Molecular Weight (g/mol)", "Topological polar surface area(TPSA) (Å²)", "LogP", 
+            "Rotatable Bonds", "Heteroatoms", "H-Bond Acceptors", 
+            "H-Bond Donors", "Number of Rings"
+        ]
+
+        ref_polymer = "PE"
+        ref_smiles = smiles_df.loc[ref_polymer, "SMILE_repeating_unit"]
+        ref_props = calculate_properties(ref_smiles)
+
+        sel_polymer = polymer_name_input
+        sel_smiles = smiles_df.loc[sel_polymer, "SMILE_repeating_unit"]
+        sel_props = calculate_properties(sel_smiles)
+
+        comp_df = pd.DataFrame(
+            {ref_polymer: ref_props, sel_polymer: sel_props}, 
+            index=prop_names
+        )
+
+        st.markdown("### Molecular Descriptor Comparison (Repeat Unit)")
+        st.markdown(
+            """
+            <div style='text-align: justify;'>
+            Molecular descriptors based on RDKit introduce fundamental molecular properties based on 
+            classical group contribution theories and set the stage for interactive exploration of feature vs property.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            "<p style='font-size:16px; font-weight:500; color:black;'>Table - Molecular Descriptor using RDKit</p>", 
+            unsafe_allow_html=True
+        )
+        st.markdown(comp_df.to_markdown())
+        st.markdown("Note: Descriptors are calculated for the repeat unit only, "
+                    "not the full polymer chain. A comparison with PE oligomer is provided as a reference.")
     else:
-        st.warning("Polymer name not found in SMILES database. Please check spelling.")
+        st.error("Invalid SMILES string for this polymer.")
+else:
+    st.warning("Polymer name not found in SMILES database. Please check spelling.")
+
+
 
 # ======================== 3. USER FEATURE INPUT & COMPARISON ========================
 # 👉 Section 3 exapnder (feature input form, comparison table, bar chart )
