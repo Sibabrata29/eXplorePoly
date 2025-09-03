@@ -69,7 +69,7 @@ ppi_z = (ppi - ppi_mean) / ppi_std
 
 # ================================ 1 HEADER & INTRODUCTION =================================
 
-st.title("PolyeXplore : Polymer exploration model")
+st.title("polyeXplore : a polymer exploration model")
 st.write("'It is the lone worker who makes the first advance in a subject, the details may be worked out by a team' - Alexander Fleming - 1881–1955")
 st.write("Welcome to Polymer eXploration Model!.")
 # st.markdown("© polyeXplore — Sibabrata De", unsafe_allow_html=True)
@@ -84,28 +84,33 @@ with st.expander("1. Introduction", expanded=True):   # expanded=True keeps it o
         """
         <div style='text-align: justify;'>
         <p>
-        A novel model has been developed to display polymer repeat unit to visualize its key structural features. 
-        The influence of these structural features on various polymer properties has then been utilized 
-        using a simplistic model. This simplified macro-level approach complements the fundamental 
-        <i>'Group Contribution Addition'</i>, originally proposed by Herman F. Mark, which relates polymer 
-        properties to their structural repeat units. This concept was systematized by D.W. van Krevelen 
-        and later enhanced by Jozef Bicerano into a comprehensive predictive framework that underpins 
-        modern computational polymer property prediction.
+        <i>'polyeXplore'</i>, a polymer exploration model, has been developed to visualize 
+        key structural features of polymers based on their repeat units and understand how these features influence 
+        various polymer properties. Unlike classical approaches that decompose a polymer into fragment contributions, 
+        this model looks at the repeat unit holistically—capturing structural features in the way a user intuitively perceives them. 
         </p>
         <p>
-        In this model, the user provides a quantified input of the structural features of a polymer's repeat unit. 
-        The model visualizes the weighted impact of these features on the polymer’s property index, which reflects 
-        the property index hierarchy among commodity, engineering, and high-performance polymers finally allowing comparison 
-        against a reference polymer library. This enables insightful understanding of how polymer architecture 
-        influences key polymer properties. 
+        The influence of these structural features on polymer properties is then displayed 
+        through a simplified macro-level model. This complements the well-established 
+        <i>'Group Contribution Addition'</i>, originally proposed by Herman F. Mark, 
+        systematized by D.W. van Krevelen, and later extended by Jozef Bicerano into a comprehensive predictive framework. 
+        While group contribution calculates polymer properties by summing fragmental values, 
+        <i>polyeXplore</i> quantifies user-defined features of the entire repeat unit—offering a new, intuitive route 
+        to exploring structure–property relationships. 
+        </p>
+        <p>
+        In practice, the user provides feature scores for a repeat unit, and the model visualizes their weighted impact 
+        on polymer properties. This enables construction of correlation matrices, ranking of polymers within property hierarchies, 
+        and identification of nearest equivalents—deepening understanding of how architecture governs performance. 
         </p>
         </div>
+
         """,
         unsafe_allow_html=True
     )
 
 
-    # --------------------------- DATA OVERVIEW -----------------------------
+# --------------------------- DATA OVERVIEW -----------------------------
 # 👉 Section 2 expander 
 
 with st.expander("2. Polymer Input + 3D Visualization"):
@@ -117,9 +122,9 @@ with st.expander("2. Polymer Input + 3D Visualization"):
     """
     <div style='text-align: justify;'>
     Enter a polymer name to visualize 3D structure of its repeat unit. A list of key structural features
-    is presented here and the properties which are infuenced by it are also displayed. It compares key molecular 
-    descriptors of the polymer using RDkit & py3Dmol with polyethylene as reference. It helps to understand
-    visually how the polymer repeat unit structure influences its properties.
+    of the polymer repeat unit is listed here along with key properties which are infuenced by it. It also compares key molecular 
+    descriptors of the polymer using RDkit & py3Dmol with polyethylene as reference which helps to understand
+    how the polymer repeat unit structure influences its properties.
     </div>
     """,
     unsafe_allow_html=True
@@ -131,8 +136,9 @@ with st.expander("2. Polymer Input + 3D Visualization"):
     st.markdown("### 📊 Polymer properties influenced by SF's of polymer RU")
     st.markdown(", ".join(properties.columns))
 
-    # ---------------------------------- USER INPUT -------------------------------------
-    st.markdown("### 📊 User input: Polymer name for 3D visualization and dispaly of molecular descriptors")
+# ---------------------------------- USER INPUT -------------------------------------
+
+    st.markdown("### 📊 Polymer - user input for 3D visualization and dispaly of molecular descriptors")
 
     # st.markdown("Enter the polymer name and quantify the structural features of its repeat unit below.")
 
@@ -143,9 +149,6 @@ with st.expander("2. Polymer Input + 3D Visualization"):
         st.session_state.user_vals = {c: 0.0 for c in features.columns}
     if "input_saved" not in st.session_state:
         st.session_state.input_saved = False
-
-# ============================= 2. Polymer Input + RDKIT 3D + DESCRIPTOR =====
-
 
 # ============================= 2. Polymer Input + RDKIT 3D + DESCRIPTOR =====
 
@@ -199,7 +202,8 @@ if submitted_polymer:
         else:
             st.warning("Polymer name not found in SMILES database.")
 
-        # -------------- RDKIT DESCRIPTOR ANALYSIS PE vs SUBMITTED POLYMER -------------- 
+# -------------- RDKIT DESCRIPTOR ANALYSIS PE vs SUBMITTED POLYMER -------------- 
+
         def calculate_properties(smiles):
             try:
                 mol = Chem.MolFromSmiles(smiles)
@@ -240,7 +244,7 @@ if submitted_polymer:
         st.markdown(
             """
             <div style='text-align: justify;'>
-            Molecular descriptors based on RDKit introduce fundamental molecular properties based on 
+            Molecular descriptors based on RDKit which presents fundamental molecular properties based on 
             classical group contribution theories and set the stage for interactive exploration of feature vs property.
             </div>
             """,
@@ -269,11 +273,12 @@ with st.expander("3. User Feature Input & Comparison"):
     st.markdown(
         """
         <div style='text-align: justify;'>
-        Here user can submit scores for the structural features of a polymer. A score for each feature in the 
+        Here user submits scores for the structural features of a polymer. A score for each feature in the 
         range of -5 to +5 is adopted for assessing the weightage on property, except chain flexibility 
-        (can be +10 for highly flexible backbones like PE). 
-        Input values are then compared against dataset values, enabling visualization 
-        of how it aligns with reference data.
+        (can be +10 for highly flexible backbones like PE). The weightage reflects the influence of each feature
+        on the polymer's properties and generates property hierarchy similar to polymer pyramid.
+        Input values are also compared against dataset values, enabling visualization 
+        of how it aligns with indicative reference data.
         </div>
         """,
         unsafe_allow_html=True
@@ -363,12 +368,14 @@ with st.expander("3. User Feature Input & Comparison"):
 
 
 # ============================== 4. NEAREST EQUIVALENT POLYMERS ================================
+# ============================== 4. NEAREST EQUIVALENT POLYMERS ================================
 # 👉 Section 4 expander (NN search, plots, features table, properties table)
+
 with st.expander("4. Nearest Equivalent Polymers"):
         
-        st.markdown("### 📊 Nearest equivalent polymers based on structural features input")
+    st.markdown("### 📊 Nearest equivalent polymers based on structural features input")
 
-        st.markdown(
+    st.markdown(
         """
         <div style='text-align: justify;'>
         This section identifies polymers that are most similar to the selected polymer 
@@ -379,116 +386,119 @@ with st.expander("4. Nearest Equivalent Polymers"):
         """,
         unsafe_allow_html=True
     )
-    
-   
 
-        if not st.session_state.get("input_saved"):
-            st.info("Please complete and save the user entry above to compute nearest polymers.")
-        else:
-            polymer = st.session_state.polymer
+    if not st.session_state.get("input_saved"):
+        st.info("Please complete and save the user entry above to compute nearest polymers.")
+    else:
+        polymer = st.session_state.polymer
 
-            # Build user feature vector aligned to dataset order
-            feature_order = list(features.columns)
-            user_feat = pd.Series(st.session_state.user_vals, dtype=float).reindex(feature_order)
+        # Build user feature vector aligned to dataset order
+        feature_order = list(features.columns)
+        user_feat = pd.Series(st.session_state.user_vals, dtype=float).reindex(feature_order)
 
-            # Compute user property index (PPI) and Z-score normalized PPI
-            user_ppi = user_feat.dot(properties)
-            user_ppi.name = f"{polymer}-user"
-            user_ppi_z = (user_ppi - ppi_mean) / ppi_std
+        # Compute user property index (PPI) and Z-score normalized PPI
+        user_ppi = user_feat.dot(properties)
+        user_ppi.name = f"{polymer}-user"
+        user_ppi_z = (user_ppi - ppi_mean) / ppi_std
 
-            # Prepare data for nearest neighbors search in PPI z-score space
-            props_for_nn = list(ppi_z.columns)
-            X = ppi_z[props_for_nn].astype(float).values
-            y = user_ppi_z[props_for_nn].astype(float).values.reshape(1, -1)
+        # Prepare data for nearest neighbors search in PPI z-score space
+        props_for_nn = list(ppi_z.columns)
+        X = ppi_z[props_for_nn].astype(float).values
+        y = user_ppi_z[props_for_nn].astype(float).values.reshape(1, -1)
 
-            # NearestNeighbors model to find 3 closest polymers
-            nn = NearestNeighbors(n_neighbors=3, metric="euclidean")
-            nn.fit(X)
-            distances, indices = nn.kneighbors(y)  # distances and indices have shape (1, n_neighbors)
+        # NearestNeighbors model to find 3 closest polymers
+        nn = NearestNeighbors(n_neighbors=3, metric="euclidean")
+        nn.fit(X)
+        distances, indices = nn.kneighbors(y)  # distances and indices have shape (1, n_neighbors)
 
-            # Flatten arrays for easier handling
-            distances = distances.flatten()
-            indices = indices.flatten()
+        # Flatten arrays
+        distances = distances.flatten()
+        indices = indices.flatten()
 
-            # Extract neighbor names and distances
-            neighbor_names = np.array(ppi_z.index)[indices]
-            neighbor_dist = distances
+        # Extract neighbor names and distances
+        neighbor_names = np.array(ppi_z.index)[indices]
+        neighbor_dist = distances
 
-            # Number of neighbors found
-            n_neighbors_found = len(neighbor_names)
+        # Sort neighbors by ascending distance
+        order = np.argsort(neighbor_dist)
+        names_ordered = neighbor_names[order]
+        dists_ordered = neighbor_dist[order]
 
-            # Sort neighbors by ascending distance
-            order = np.argsort(neighbor_dist)[:n_neighbors_found]
+        # Distance of USER polymer vs dataset baseline
+        from sklearn.metrics import euclidean_distances
+        user_vs_data_dist = euclidean_distances(
+            user_ppi_z.values.reshape(1, -1),
+            ppi_z.loc[[polymer]].values
+        )[0][0]
 
-            names_ordered = neighbor_names[order]
-            dists_ordered = neighbor_dist[order]
+        # ---------------- Nearest Polymers Chart ----------------
+        st.subheader("1. Nearest equivalent polymers based on input features")
 
-            # Compute relative distances (nearest at 0)
-            min_dist = dists_ordered[0]
-            if min_dist <= 0:
-                min_dist = 1e-6  # avoid division by zero
+        chart_names = [f"{polymer}-DATA", f"{polymer}-USER"] + list(names_ordered)
+        chart_dists = [0.00, round(user_vs_data_dist, 3)] + list(dists_ordered)
+        colors = ["darkgreen", "orange"] + ["steelblue"] * len(names_ordered)
 
-            rel_dist = [round(max(0, (d - min_dist) / min_dist), 3) for d in dists_ordered]
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.barh(chart_names[::-1], chart_dists[::-1], color=colors[::-1])
+        ax.set_xlabel("Relative distance in PPI space (min = 0)")
+        ax.set_ylabel("Polymer")
+        ax.set_title("Nearest polymers (User vs Reference)")
+        for y_i, v in enumerate(chart_dists[::-1]):
+            ax.text(v, y_i, f" {v:.2f}", va="center")
+        fig.tight_layout()
+        st.pyplot(fig)
 
-            st.markdown("<br>", unsafe_allow_html=True)
-            # Plot horizontal bar chart of nearest polymers
-            st.subheader("1. Nearest equivalent polymers based on input features")
-            fig, ax = plt.subplots(figsize=(8, 4))
-            ax.barh(names_ordered[::-1], rel_dist[::-1])
-            ax.set_xlabel("Relative distance in PPI space (min = 0)")
-            ax.set_ylabel("Polymer")
-            ax.set_title("Nearest polymers")
-            for y_i, v in enumerate(rel_dist[::-1]):
-                ax.text(v, y_i, f" {v:.2f}", va="center")
-            fig.tight_layout()
-            st.pyplot(fig)
+        st.caption("Note: Distances are relative to the dataset polymer’s PPI (baseline = 0.00).")
 
-            # --- Structural Features of Nearest Polymers ---
-            st.subheader("2. Structural features of nearest equivalent polymers in feature space")
+        # --- Structural Features of Nearest Polymers ---
+        st.subheader("2. Structural features of nearest equivalent polymers in feature space")
 
-                    # add a small gap
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(
-        "<p style='font-size:16px; font-weight:500; color:black;'>Table - Structural Features of nearest polymers</p>", 
-        unsafe_allow_html=True
-    )
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            "<p style='font-size:16px; font-weight:500; color:black;'>Table - Structural Features of nearest polymers</p>", 
+            unsafe_allow_html=True
+        )
 
-            # Avoid duplicating user's polymer if present in nearest neighbor list
-            nn_list = [p for p in names_ordered if p != polymer]
+        # Avoid duplicating user's polymer if present in nearest neighbor list
+        nn_list = [p for p in names_ordered if p != polymer]
 
-            # Extract feature data for nearest neighbors and user input
-            nearest_poly_features = features.loc[nn_list].T  # Features as rows, polymers as columns
-            user_feat.name = f"{polymer}-USER"
+        # Extract feature data for nearest neighbors and user input
+        nearest_poly_features = features.loc[nn_list].T  # Features as rows, polymers as columns
+        user_feat.name = f"{polymer}-USER"
 
-            try:
-                data_col = features.loc[polymer].rename(f"{polymer}-DATA")
-            except KeyError:
-                st.error(f"Polymer '{polymer}' not found in dataset index.")
-                data_col = pd.Series(index=features.columns, dtype=float, name=f"{polymer}-DATA")
+        try:
+            data_col = features.loc[polymer].rename(f"{polymer}-DATA")
+        except KeyError:
+            st.error(f"Polymer '{polymer}' not found in dataset index.")
+            data_col = pd.Series(index=features.columns, dtype=float, name=f"{polymer}-DATA")
 
-            # Combine user input, database data, and nearest neighbors for comparison
-            compare_T = pd.concat(
-                [user_feat.to_frame(), data_col.to_frame(), nearest_poly_features],
-                axis=1
-            )
+        # Combine user input, dataset data, and nearest neighbors for comparison
+        compare_T = pd.concat(
+            [user_feat.to_frame(), data_col.to_frame(), nearest_poly_features],
+            axis=1
+        )
 
-            st.dataframe(compare_T.style.format("{:.2f}"))
+        st.dataframe(compare_T.style.format("{:.2f}"))
 
-            # --- Properties of Nearest Polymers from Reference Library ---
-            st.subheader("3. Properties of nearest polymers from reference library")
+        # --- Properties of Nearest Polymers from Reference Library ---
+        st.subheader("3. Properties of nearest polymers from reference library")
 
-                                # add a small gap
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(
-        "<p style='font-size:16px; font-weight:500; color:black;'>Table - Polymer property from reference</p>", 
-        unsafe_allow_html=True
-    )
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            "<p style='font-size:16px; font-weight:500; color:black;'>Table - Polymer property from reference</p>", 
+            unsafe_allow_html=True
+        )
 
-            neighbor_library = library.loc[names_ordered]
-            neighbor_library_T = neighbor_library.T
-            st.dataframe(neighbor_library_T.style.format("{:.2f}"))
+        # Ensure no duplicates: combine selected polymer + neighbors, but drop duplicates
+        unique_polymers = [polymer] + [p for p in names_ordered if p != polymer]
 
-            st.markdown("Note: The nearest polymers are determined based on Euclidean distance in the standardized property index space.")
+        neighbor_library = library.loc[unique_polymers].copy()
+        neighbor_library_T = neighbor_library.T
+        st.dataframe(neighbor_library_T.style.format("{:.2f}"))
+
+        st.markdown("Note: The nearest polymers are determined based on Euclidean distance "
+                    "in the standardized property index space, with the selected polymer’s "
+                    "library data shown for reference.")
 
 
 # =========================== 5. POLYMER PROPERTY HIERARCHY ============================
@@ -844,19 +854,20 @@ with st.expander("11. Conclusion", expanded=True):
         """
         <div style='text-align: justify;'>
         <p>
-        This project attempts to offer a streamlined model that visually connects polymer repeat unit features to key material properties, 
-        offering rapid comparison across commodity, engineering, and high-performance polymers. By quantifying and weighting 
-        structural impacts, the approach enhances both predictive accuracy and interpretability complementing fundamental 
-        group contribution methods. Notably, the model’s intuitive visualization serves as an educative 
-        tool—empowering users to understand, compare, and predict polymer properties based on structural design,
-        while deepening their grasp of structure‑property relationships.
+        <i>polyeXplore</i> introduces a fresh perspective to polymer property modeling by treating the repeat unit as a whole 
+        rather than reducing it to additive fragments. Where group contribution relies on fragmental summation 
+        (e.g., –CH₂– and –CH(Ph)– in polystyrene), <i>polyeXplore</i> enables users to assign feature scores directly 
+        to the full repeat unit. This streamlined, feature-centric approach—though simpler—has demonstrated the ability 
+        to rank polymers correctly across commodity, engineering, and high-performance classes. 
         </p>
         <p>
-        A practical next step would be to extend the model with curated experimental data and broader polymer types, which could 
-        improve its accuracy and utility for property prediction and comparison. Such developments would support continual 
-        learning and wider applicability in educational and research contexts. 
+        In doing so, the model not only complements traditional methods but also democratizes them, 
+        making structure–property reasoning more accessible to polymer enthusiasts and learners. 
+        A natural next step may be to strengthen the model with curated experimental data and a broader set of polymer types, 
+        enhancing both predictive scope and educational value. 
         </p>
         </div>
+
         """,
         unsafe_allow_html=True
     )
