@@ -69,9 +69,19 @@ ppi_z = (ppi - ppi_mean) / ppi_std
 
 # ================================ 1 HEADER & INTRODUCTION =================================
 
-st.title("polyeXplore : Polymer Structure–Property Exploration Model")
-st.write("'It is the lone worker who makes the first advance in a subject, the details may be worked out by a team' - Alexander Fleming - 1881–1955")
-st.write("Welcome to Polymer eXploration Model!.")
+st.title("polyeXplore : A model for polymer structure-property exploration & visualization")
+st.write(
+    "_'It is the lone worker who makes the first advance in a subject, "
+    "the details may be worked out by a team'_ – Alexander Fleming (1881–1955)"
+)
+st.write("Welcome to polyeXplore - polymer eXploration Model!.")
+
+# --- Tagline ---
+st.markdown(
+    "<p style='text-align: center; font-size:14px; font-style: italic; color:gray;'>"
+    "Explore • Compare • Understand</p>",
+    unsafe_allow_html=True
+)
 # st.markdown("© polyeXplore — Sibabrata De", unsafe_allow_html=True)
 
 # 👉 Section 1 expander 
@@ -872,11 +882,24 @@ with st.expander("11. Conclusion", expanded=True):
         unsafe_allow_html=True
     )
 
+# --- Footer ---
     st.markdown(
-        "<p style='text-align: center; font-size:12px;'>"
-        "polyeXplore – Polymer Structure–Property Exploration © Sibabrata De</p>",
+        "<hr style='margin-top:30px; margin-bottom:10px;'>", 
         unsafe_allow_html=True
     )
+
+    st.markdown(
+        "<p style='text-align: center; font-size:14px; font-style: italic; color:gray;'>"
+        "Explore • Compare • Understand Polymer Structure–Property Relationships</p>",
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        "<p style='text-align: center; font-size:12px; color:gray;'>"
+        "© 2025 Sibabrata De – polyeXplore</p>",
+        unsafe_allow_html=True
+    )
+
 
 
 # EOF
