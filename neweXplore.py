@@ -890,7 +890,7 @@ with st.expander("11. Conclusion", expanded=True):
 
     st.markdown(
         "<p style='text-align: center; font-size:14px; font-style: italic; color:gray;'>"
-        "Explore • Compare • Understand Polymer Structure–Property Relationships</p>",
+        "Explore • Compare • Understand</p>",
         unsafe_allow_html=True
     )
 
