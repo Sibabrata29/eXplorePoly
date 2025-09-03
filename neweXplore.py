@@ -69,7 +69,7 @@ ppi_z = (ppi - ppi_mean) / ppi_std
 
 # ================================ 1 HEADER & INTRODUCTION =================================
 
-st.title("polyeXplore : a polymer exploration model")
+st.title("polyeXplore : Polymer Structure–Property Exploration Model")
 st.write("'It is the lone worker who makes the first advance in a subject, the details may be worked out by a team' - Alexander Fleming - 1881–1955")
 st.write("Welcome to Polymer eXploration Model!.")
 # st.markdown("© polyeXplore — Sibabrata De", unsafe_allow_html=True)
@@ -872,8 +872,11 @@ with st.expander("11. Conclusion", expanded=True):
         unsafe_allow_html=True
     )
 
-    st.markdown("<hr style='margin-top: 0; margin-bottom: 4px;'>", unsafe_allow_html=True)
-    # st.markdown("<p style='text-align: center; font-size: small; margin-top: 0; margin-bottom: 0;'>***End of Analysis***</p>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: right; font-size: small;'>PolyeXplore - Polymer Property Visualization © Sibabrata De</p>", unsafe_allow_html=True)
+    st.markdown(
+        "<p style='text-align: center; font-size:12px;'>"
+        "polyeXplore – Polymer Structure–Property Exploration © Sibabrata De</p>",
+        unsafe_allow_html=True
+    )
+
 
 # EOF
